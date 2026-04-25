@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models import Transaction
+from services import preprocess_transaction_data
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
 
@@ -31,11 +32,18 @@ class TransactionResponse(TransactionCreate):
 @router.post("", response_model=TransactionResponse, status_code=status.HTTP_201_CREATED)
 def create_transaction(payload: TransactionCreate, db: Session = Depends(get_db)):
     try:
-        transaction = Transaction(**payload.model_dump())
+        processed_payload = preprocess_transaction_data(payload.model_dump())
+        transaction = Transaction(**processed_payload)
         db.add(transaction)
         db.commit()
         db.refresh(transaction)
         return transaction
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
     except SQLAlchemyError as exc:
         db.rollback()
         raise HTTPException(
