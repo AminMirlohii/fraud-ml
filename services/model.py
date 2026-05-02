@@ -65,7 +65,22 @@ def _z_to_anomaly_score(z: float) -> float:
     return (a - Z_ANOMALY_LOW) / (Z_ANOMALY_HIGH - Z_ANOMALY_LOW)
 
 
-def _build_explanations(z_score: float, lr_prob: float, anomaly_score: float) -> list[str]:
+def _category_explanation(category: str | None) -> str | None:
+    """Simple, explainable flag aligned with synthetic training (travel / uncategorized over-represented in fraud)."""
+    if not category:
+        return None
+    key = str(category).strip().lower()
+    if key in ("travel", "uncategorized"):
+        return "Unusual category (elevated in the model training profile)"
+    return None
+
+
+def _build_explanations(
+    z_score: float,
+    lr_prob: float,
+    anomaly_score: float,
+    category: str | None = None,
+) -> list[str]:
     explanations: list[str] = []
     az = abs(z_score)
 
@@ -82,6 +97,10 @@ def _build_explanations(z_score: float, lr_prob: float, anomaly_score: float) ->
     if anomaly_score >= 0.5 and lr_prob < 0.45:
         explanations.append("Anomaly score elevated despite low model probability")
 
+    cat_line = _category_explanation(category)
+    if cat_line:
+        explanations.append(cat_line)
+
     if not explanations:
         explanations.append("No strong anomaly or model risk signals")
 
@@ -94,7 +113,10 @@ trained_model.fit(_x_train, _y_train)
 AMOUNT_REF_MEAN, AMOUNT_REF_STD = _reference_amount_stats(_x_train, _y_train)
 
 
-def predict_fraud(feature_vector: Iterable[float]) -> dict[str, Any]:
+def predict_fraud(
+    feature_vector: Iterable[float],
+    category: str | None = None,
+) -> dict[str, Any]:
     """
     Logistic regression + Z-score amount anomaly, combined with simple weights.
     """
@@ -115,7 +137,10 @@ def predict_fraud(feature_vector: Iterable[float]) -> dict[str, Any]:
     final_fraud = combined_score >= FINAL_THRESHOLD
 
     explanations = _build_explanations(
-        z_score, model_fraud_probability, amount_anomaly_score
+        z_score,
+        model_fraud_probability,
+        amount_anomaly_score,
+        category=category,
     )
 
     return {

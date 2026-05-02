@@ -12,7 +12,7 @@ export default function PredictionResult({
           <div>
             <p className="result-loading__title">Analyzing</p>
             <p className="result-loading__text">
-              Model score and amount anomaly checks…
+              Model score, amount Z-score, and category signals…
             </p>
           </div>
         </div>
@@ -42,6 +42,13 @@ export default function PredictionResult({
 
   const fraud = result.fraud_label === true
   const prob = Number(result.combined_score)
+  const zScore =
+    result.amount_z_score != null && result.amount_z_score !== ''
+      ? Number(result.amount_z_score)
+      : null
+  const explanations = Array.isArray(result.explanations)
+    ? result.explanations
+    : []
 
   return (
     <article
@@ -57,6 +64,31 @@ export default function PredictionResult({
         <span className="result-stat__value">
           {!Number.isNaN(prob) ? prob.toFixed(3) : '—'}
         </span>
+      </div>
+
+      {zScore != null && !Number.isNaN(zScore) && (
+        <div className="result-z">
+          <span className="result-z__label">Amount Z-score</span>
+          <span className="result-z__value">{zScore.toFixed(2)}</span>
+          <span className="result-z__hint">
+            vs. typical “safe” amounts in the model reference set (0 = average).
+          </span>
+        </div>
+      )}
+
+      <div className="result-why">
+        <h3 className="result-why__title">Why this outcome</h3>
+        <ul className="result-why__list">
+          {explanations.length === 0 ? (
+            <li className="result-why__item">No detail returned from the API.</li>
+          ) : (
+            explanations.map((line, i) => (
+              <li key={`${i}-${line.slice(0, 24)}`} className="result-why__item">
+                {line}
+              </li>
+            ))
+          )}
+        </ul>
       </div>
     </article>
   )

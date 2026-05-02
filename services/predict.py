@@ -12,7 +12,7 @@ def predict_transaction_fraud(payload: dict[str, Any]) -> dict[str, Any]:
     """
     processed = preprocess_transaction_data(payload)
     feature_vector = transaction_to_features(processed)
-    scores = predict_fraud(feature_vector)
+    scores = predict_fraud(feature_vector, category=processed.get("category"))
 
     return {
         "model_fraud_probability": float(scores["model_fraud_probability"]),
