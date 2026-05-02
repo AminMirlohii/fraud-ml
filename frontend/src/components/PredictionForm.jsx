@@ -10,7 +10,14 @@ const CATEGORIES = [
   'uncategorized',
 ]
 
-export default function PredictionForm() {
+function newPredictionId() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID()
+  }
+  return `pred-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+}
+
+export default function PredictionForm({ onPredictionRecorded }) {
   const [amount, setAmount] = useState('')
   const [category, setCategory] = useState('shopping')
   const [result, setResult] = useState(null)
@@ -39,6 +46,14 @@ export default function PredictionForm() {
       const data = await predictTransaction(payload)
       setResultKey((k) => k + 1)
       setResult(data)
+      onPredictionRecorded?.({
+        id: newPredictionId(),
+        amount: n,
+        category,
+        fraud_label: Boolean(data.fraud_label),
+        fraud_probability: Number(data.combined_score),
+        recordedAt: new Date().toISOString(),
+      })
     } catch (err) {
       const detail = err.response?.data?.detail
       setError(

@@ -1,9 +1,100 @@
 .shell {
   min-height: 100vh;
+  padding: 1.5rem 1.25rem 2.5rem;
+}
+
+.dashboard {
+  width: 100%;
+  max-width: 72rem;
+  margin: 0 auto;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1.5rem;
+}
+
+.dashboard__primary {
+  display: flex;
   justify-content: center;
-  padding: 1.5rem;
+}
+
+.dashboard__charts {
+  min-width: 0;
+}
+
+@media (min-width: 1024px) {
+  .dashboard {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 1.75rem;
+  }
+
+  .dashboard__primary {
+    flex: 0 0 auto;
+    position: sticky;
+    top: 1.5rem;
+  }
+
+  .dashboard__charts {
+    flex: 1;
+  }
+}
+
+.charts {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.chart-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 1.15rem 1.25rem 1.25rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+.chart-card__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+
+.chart-card__desc {
+  margin: 0.35rem 0 0.75rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: #64748b;
+}
+
+.chart-card__empty {
+  margin: 0;
+  padding: 1.5rem 0.5rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: #94a3b8;
+  line-height: 1.5;
+}
+
+.chart-card__plot {
+  width: 100%;
+}
+
+.chart-card__plot--pie {
+  margin: 0 -0.25rem;
+}
+
+.charts-fallback {
+  margin: 0;
+  padding: 2rem 1rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: #64748b;
+  background: #fff;
+  border: 1px dashed #cbd5e1;
+  border-radius: 14px;
 }
 
 .card {
