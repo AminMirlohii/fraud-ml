@@ -1,13 +1,17 @@
 :root {
+  --dash-bg: #0b0e14;
+  --dash-bg-elevated: #111620;
+  --dash-surface: #141a26;
+  --dash-border: rgba(255, 255, 255, 0.08);
+  --dash-text: #e8eaef;
+  --dash-muted: #8b93a7;
+  --dash-accent: #5b8def;
+  --dash-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   line-height: 1.5;
-  color: #0f172a;
-  background: radial-gradient(
-      ellipse 120% 80% at 50% -20%,
-      #e0e7ff 0%,
-      transparent 55%
-    ),
-    #f1f5f9;
+  color: var(--dash-text);
+  background: var(--dash-bg);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -21,4 +25,10 @@ body {
 
 #root {
   min-height: 100vh;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.85em;
+  color: var(--dash-muted);
 }

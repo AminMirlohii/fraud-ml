@@ -13,9 +13,21 @@ import {
   YAxis,
 } from 'recharts'
 
-const FRAUD_COLOR = '#dc2626'
-const SAFE_COLOR = '#16a34a'
-const AMT_COLOR = '#6366f1'
+const FRAUD_COLOR = '#f87171'
+const SAFE_COLOR = '#4ade80'
+const AMT_COLOR = '#7c9ef0'
+
+const TOOLTIP_STYLE = {
+  borderRadius: 8,
+  border: '1px solid rgba(255,255,255,0.12)',
+  background: '#1a2030',
+  color: '#e8eaef',
+}
+
+const AXIS_TICK = { fontSize: 11, fill: '#8b93a7' }
+const GRID_STROKE = 'rgba(255,255,255,0.06)'
+const AXIS_LINE = 'rgba(255,255,255,0.1)'
+const LABEL_STYLE = { fill: '#8b93a7', fontSize: 11 }
 
 function formatAmount(v) {
   if (v == null || Number.isNaN(v)) return '—'
@@ -84,6 +96,7 @@ export default function PredictionCharts({ predictions }) {
                   label={({ name, percent }) =>
                     `${name} ${(percent * 100).toFixed(0)}%`
                   }
+                  style={{ fontSize: 11, fill: '#8b93a7' }}
                 >
                   {pieData.map((entry) => (
                     <Cell key={entry.name} fill={entry.fill} />
@@ -91,13 +104,11 @@ export default function PredictionCharts({ predictions }) {
                 </Pie>
                 <Tooltip
                   formatter={(value, name) => [`${value} runs`, name]}
-                  contentStyle={{
-                    borderRadius: 8,
-                    border: '1px solid #e2e8f0',
-                  }}
+                  contentStyle={TOOLTIP_STYLE}
                 />
                 <Legend
                   verticalAlign="bottom"
+                  wrapperStyle={{ fontSize: 12, color: '#8b93a7' }}
                   formatter={(value) =>
                     value === 'Fraud'
                       ? `Fraud (${fraudTotal})`
@@ -130,39 +141,40 @@ export default function PredictionCharts({ predictions }) {
                 <CartesianGrid
                   strokeDasharray="3 3"
                   vertical={false}
-                  stroke="#e2e8f0"
+                  stroke={GRID_STROKE}
                 />
                 <XAxis
                   dataKey="name"
-                  tick={{ fontSize: 11, fill: '#64748b' }}
+                  tick={AXIS_TICK}
                   tickLine={false}
+                  axisLine={{ stroke: AXIS_LINE }}
                 />
                 <YAxis
                   yAxisId="amt"
-                  tick={{ fontSize: 11, fill: '#64748b' }}
+                  tick={AXIS_TICK}
                   tickFormatter={formatAmount}
                   tickLine={false}
-                  axisLine={{ stroke: '#e2e8f0' }}
+                  axisLine={{ stroke: AXIS_LINE }}
                   label={{
                     value: 'Amount',
                     angle: -90,
                     position: 'insideLeft',
-                    style: { fill: '#64748b', fontSize: 11 },
+                    style: LABEL_STYLE,
                   }}
                 />
                 <YAxis
                   yAxisId="prob"
                   orientation="right"
                   domain={[0, 1]}
-                  tick={{ fontSize: 11, fill: '#64748b' }}
+                  tick={AXIS_TICK}
                   tickFormatter={(v) => v.toFixed(1)}
                   tickLine={false}
-                  axisLine={{ stroke: '#e2e8f0' }}
+                  axisLine={{ stroke: AXIS_LINE }}
                   label={{
                     value: 'Fraud probability',
                     angle: 90,
                     position: 'insideRight',
-                    style: { fill: '#64748b', fontSize: 11 },
+                    style: LABEL_STYLE,
                   }}
                 />
                 <Tooltip
@@ -174,12 +186,11 @@ export default function PredictionCharts({ predictions }) {
                     return [value, name]
                   }}
                   labelFormatter={(label) => `Screening: ${label}`}
-                  contentStyle={{
-                    borderRadius: 8,
-                    border: '1px solid #e2e8f0',
-                  }}
+                  contentStyle={TOOLTIP_STYLE}
                 />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Legend
+                  wrapperStyle={{ fontSize: 12, color: '#8b93a7' }}
+                />
                 <Bar
                   yAxisId="amt"
                   dataKey="amount"
