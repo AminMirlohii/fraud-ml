@@ -14,6 +14,7 @@ export default function PredictionForm() {
   const [amount, setAmount] = useState('')
   const [category, setCategory] = useState('shopping')
   const [result, setResult] = useState(null)
+  const [resultKey, setResultKey] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
@@ -36,6 +37,7 @@ export default function PredictionForm() {
         isFraud: false,
       }
       const data = await predictTransaction(payload)
+      setResultKey((k) => k + 1)
       setResult(data)
     } catch (err) {
       const detail = err.response?.data?.detail
@@ -54,72 +56,111 @@ export default function PredictionForm() {
   const fraud = result?.fraud_label === true
   const prob = result != null ? Number(result.combined_score) : null
 
+  const cardTone =
+    result === null ? '' : fraud ? 'card--fraud' : 'card--safe'
+
   return (
-    <article className="card">
-      <header className="card-header">
-        <h1 className="card-title">Fraud check</h1>
-        <p className="card-subtitle">
-          Enter a transaction. We score it against the API model.
+    <article className={`card ${cardTone} ${loading ? 'card--loading' : ''}`}>
+      <div className="card-brand">
+        <span className="card-brand-mark" aria-hidden="true" />
+        <div>
+          <p className="card-brand-name">RiskGuard</p>
+          <p className="card-brand-tag">Live transaction screening</p>
+        </div>
+      </div>
+
+      <div className="card-body">
+        <p className="card-lead">
+          Review a payment before it settles. Results sync with your fraud
+          model API.
         </p>
-      </header>
 
-      <form className="card-form" onSubmit={handleSubmit}>
-        <label className="field">
-          <span className="field-label">Amount</span>
-          <input
-            className="field-input"
-            type="number"
-            step="any"
-            required
-            inputMode="decimal"
-            placeholder="e.g. 150000"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-          />
-        </label>
+        <form className="card-form" onSubmit={handleSubmit}>
+          <div className="fields-row">
+            <label className="field">
+              <span className="field-label">Amount</span>
+              <input
+                className="field-input"
+                type="number"
+                step="any"
+                required
+                inputMode="decimal"
+                placeholder="0.00"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                disabled={loading}
+              />
+            </label>
+            <label className="field">
+              <span className="field-label">Category</span>
+              <select
+                className="field-input"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                disabled={loading}
+              >
+                {CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
 
-        <label className="field">
-          <span className="field-label">Category</span>
-          <select
-            className="field-input"
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
+          <button className="submit" type="submit" disabled={loading}>
+            {loading ? (
+              <span className="submit-inner">
+                <span className="spinner" aria-hidden="true" />
+                Analyzing…
+              </span>
+            ) : (
+              'Screen transaction'
+            )}
+          </button>
+        </form>
+
+        {loading && (
+          <div className="loading-panel" aria-live="polite">
+            <div className="loading-panel__track">
+              <span className="spinner spinner--large" aria-hidden="true" />
+              <div>
+                <p className="loading-panel__title">Checking risk signals</p>
+                <p className="loading-panel__text">
+                  Model scoring and amount anomaly checks…
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="message message-error message--animate" role="alert">
+            {error}
+          </div>
+        )}
+
+        {result && !loading && (
+          <section
+            className={`verdict-panel verdict-panel--${fraud ? 'fraud' : 'safe'}`}
+            key={resultKey}
+            aria-live="polite"
           >
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <button className="submit" type="submit" disabled={loading}>
-          {loading ? 'Checking…' : 'Check for fraud'}
-        </button>
-      </form>
-
-      {error && <p className="message message-error">{error}</p>}
-
-      {result && (
-        <section className="outcome" aria-live="polite">
-          <div className="outcome-row">
-            <span className="outcome-label">Fraud probability</span>
-            <span className="outcome-value">
-              {prob != null && !Number.isNaN(prob)
-                ? prob.toFixed(3)
-                : '—'}
-            </span>
-          </div>
-          <div className="outcome-row outcome-row--verdict">
-            <span className="outcome-label">Prediction</span>
-            <span
-              className={`verdict ${fraud ? 'verdict--fraud' : 'verdict--ok'}`}
-            >
-              {fraud ? 'Fraud' : 'Not fraud'}
-            </span>
-          </div>
-        </section>
-      )}
+            <h2 className="verdict-panel__headline">
+              {fraud ? '⚠️ Fraud detected' : '✅ Safe transaction'}
+            </h2>
+            <div className="verdict-panel__stats">
+              <div className="stat">
+                <span className="stat-label">Risk score</span>
+                <span className="stat-value">
+                  {prob != null && !Number.isNaN(prob) ? prob.toFixed(3) : '—'}
+                </span>
+                <span className="stat-hint">0 = lowest, 1 = highest</span>
+              </div>
+            </div>
+          </section>
+        )}
+      </div>
     </article>
   )
 }
