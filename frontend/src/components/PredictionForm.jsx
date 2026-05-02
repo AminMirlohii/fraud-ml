@@ -1,24 +1,21 @@
 import { useState } from 'react'
 import { predictTransaction } from '../services/api.js'
 
-const defaultForm = {
-  amount: '',
-  timestamp: '',
-  merchant: '',
-  category: 'shopping',
-  location: '',
-  isFraud: false,
-}
+const CATEGORIES = [
+  'shopping',
+  'food',
+  'travel',
+  'bills',
+  'entertainment',
+  'uncategorized',
+]
 
 export default function PredictionForm() {
-  const [form, setForm] = useState(defaultForm)
+  const [amount, setAmount] = useState('')
+  const [category, setCategory] = useState('shopping')
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
-
-  function update(field, value) {
-    setForm((f) => ({ ...f, [field]: value }))
-  }
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -26,18 +23,17 @@ export default function PredictionForm() {
     setResult(null)
     setLoading(true)
     try {
-      const ts =
-        form.timestamp.trim() || new Date().toISOString().slice(0, 19)
-      const payload = {
-        amount: Number(form.amount),
-        timestamp: ts,
-        merchant: form.merchant.trim() || 'unknown',
-        category: form.category,
-        location: form.location.trim() || null,
-        isFraud: Boolean(form.isFraud),
+      const n = Number(amount)
+      if (Number.isNaN(n)) {
+        throw new Error('Amount must be a number.')
       }
-      if (Number.isNaN(payload.amount)) {
-        throw new Error('Amount must be a number')
+      const payload = {
+        amount: n,
+        timestamp: new Date().toISOString(),
+        merchant: 'unknown',
+        category,
+        location: null,
+        isFraud: false,
       }
       const data = await predictTransaction(payload)
       setResult(data)
@@ -55,74 +51,75 @@ export default function PredictionForm() {
     }
   }
 
+  const fraud = result?.fraud_label === true
+  const prob = result != null ? Number(result.combined_score) : null
+
   return (
-    <section className="panel">
-      <h2>Predict fraud</h2>
-      <form className="form" onSubmit={handleSubmit}>
-        <label>
-          Amount
+    <article className="card">
+      <header className="card-header">
+        <h1 className="card-title">Fraud check</h1>
+        <p className="card-subtitle">
+          Enter a transaction. We score it against the API model.
+        </p>
+      </header>
+
+      <form className="card-form" onSubmit={handleSubmit}>
+        <label className="field">
+          <span className="field-label">Amount</span>
           <input
+            className="field-input"
             type="number"
             step="any"
             required
-            value={form.amount}
-            onChange={(e) => update('amount', e.target.value)}
+            inputMode="decimal"
+            placeholder="e.g. 150000"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
           />
         </label>
-        <label>
-          Timestamp (ISO)
-          <input
-            type="datetime-local"
-            value={form.timestamp}
-            onChange={(e) => update('timestamp', e.target.value)}
-          />
-        </label>
-        <label>
-          Merchant
-          <input
-            type="text"
-            value={form.merchant}
-            onChange={(e) => update('merchant', e.target.value)}
-          />
-        </label>
-        <label>
-          Category
+
+        <label className="field">
+          <span className="field-label">Category</span>
           <select
-            value={form.category}
-            onChange={(e) => update('category', e.target.value)}
+            className="field-input"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
           >
-            <option value="shopping">shopping</option>
-            <option value="food">food</option>
-            <option value="travel">travel</option>
-            <option value="bills">bills</option>
-            <option value="entertainment">entertainment</option>
-            <option value="uncategorized">uncategorized</option>
+            {CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
           </select>
         </label>
-        <label>
-          Location (optional)
-          <input
-            type="text"
-            value={form.location}
-            onChange={(e) => update('location', e.target.value)}
-          />
-        </label>
-        <label className="checkbox">
-          <input
-            type="checkbox"
-            checked={form.isFraud}
-            onChange={(e) => update('isFraud', e.target.checked)}
-          />
-          Ground-truth isFraud (optional)
-        </label>
-        <button type="submit" disabled={loading}>
-          {loading ? 'Scoring…' : 'Run prediction'}
+
+        <button className="submit" type="submit" disabled={loading}>
+          {loading ? 'Checking…' : 'Check for fraud'}
         </button>
       </form>
-      {error && <p className="error">{error}</p>}
+
+      {error && <p className="message message-error">{error}</p>}
+
       {result && (
-        <pre className="result">{JSON.stringify(result, null, 2)}</pre>
+        <section className="outcome" aria-live="polite">
+          <div className="outcome-row">
+            <span className="outcome-label">Fraud probability</span>
+            <span className="outcome-value">
+              {prob != null && !Number.isNaN(prob)
+                ? prob.toFixed(3)
+                : '—'}
+            </span>
+          </div>
+          <div className="outcome-row outcome-row--verdict">
+            <span className="outcome-label">Prediction</span>
+            <span
+              className={`verdict ${fraud ? 'verdict--fraud' : 'verdict--ok'}`}
+            >
+              {fraud ? 'Fraud' : 'Not fraud'}
+            </span>
+          </div>
+        </section>
       )}
-    </section>
+    </article>
   )
 }
