@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Iterable
+from typing import Any, Iterable
 
 import numpy as np
 from sklearn.linear_model import LogisticRegression
@@ -8,6 +8,14 @@ from sklearn.linear_model import LogisticRegression
 # Matches the vector layout from services.features.transaction_to_features:
 # [normalized_amount, hour_of_day, is_high_amount, 6 category one-hot flags]
 FEATURE_SIZE = 9
+
+LR_WEIGHT = 0.65
+ANOMALY_WEIGHT = 0.35
+FINAL_THRESHOLD = 0.5
+
+# Z-score → [0, 1] anomaly score: ramp between |z|=2 and |z|=4
+Z_ANOMALY_LOW = 2.0
+Z_ANOMALY_HIGH = 4.0
 
 
 def _build_synthetic_dataset(samples_per_class: int = 250) -> tuple[np.ndarray, np.ndarray]:
@@ -33,22 +41,88 @@ def _build_synthetic_dataset(samples_per_class: int = 250) -> tuple[np.ndarray, 
     return x, y
 
 
-def _train_model() -> LogisticRegression:
-    x_train, y_train = _build_synthetic_dataset()
-    clf = LogisticRegression(max_iter=500, random_state=42)
-    clf.fit(x_train, y_train)
-    return clf
+def _reference_amount_stats(x_train: np.ndarray, y_train: np.ndarray) -> tuple[float, float]:
+    """Mean/std of normalized amount on non-fraud (label 0) rows for Z-score baseline."""
+    normal_rows = y_train == 0
+    amounts = x_train[normal_rows, 0]
+    mean = float(amounts.mean())
+    std = float(amounts.std())
+    if std < 1e-9:
+        std = 1e-9
+    return mean, std
 
 
-trained_model = _train_model()
+def _z_score(amount: float, mean: float, std: float) -> float:
+    return (amount - mean) / std
 
 
-def predict_fraud(feature_vector: Iterable[float]) -> dict[str, float | int]:
+def _z_to_anomaly_score(z: float) -> float:
+    a = abs(z)
+    if a <= Z_ANOMALY_LOW:
+        return 0.0
+    if a >= Z_ANOMALY_HIGH:
+        return 1.0
+    return (a - Z_ANOMALY_LOW) / (Z_ANOMALY_HIGH - Z_ANOMALY_LOW)
+
+
+def _build_explanations(z_score: float, lr_prob: float, anomaly_score: float) -> list[str]:
+    explanations: list[str] = []
+    az = abs(z_score)
+
+    if az >= 3.0:
+        explanations.append("High amount anomaly (Z-score far from typical amounts)")
+    elif az >= Z_ANOMALY_LOW:
+        explanations.append("Amount moderately unusual versus typical amounts")
+
+    if lr_prob >= 0.6:
+        explanations.append("Strong elevated fraud risk from logistic regression")
+    elif lr_prob >= 0.45:
+        explanations.append("Moderate fraud risk from logistic regression")
+
+    if anomaly_score >= 0.5 and lr_prob < 0.45:
+        explanations.append("Anomaly score elevated despite low model probability")
+
+    if not explanations:
+        explanations.append("No strong anomaly or model risk signals")
+
+    return explanations
+
+
+_x_train, _y_train = _build_synthetic_dataset()
+trained_model = LogisticRegression(max_iter=500, random_state=42)
+trained_model.fit(_x_train, _y_train)
+AMOUNT_REF_MEAN, AMOUNT_REF_STD = _reference_amount_stats(_x_train, _y_train)
+
+
+def predict_fraud(feature_vector: Iterable[float]) -> dict[str, Any]:
+    """
+    Logistic regression + Z-score amount anomaly, combined with simple weights.
+    """
     features = np.asarray(list(feature_vector), dtype=float)
     if features.shape[0] != FEATURE_SIZE:
         raise ValueError(f"Expected {FEATURE_SIZE} features, got {features.shape[0]}.")
 
-    features = features.reshape(1, -1)
-    fraud_probability = float(trained_model.predict_proba(features)[0][1])
-    fraud_label = int(trained_model.predict(features)[0])
-    return {"is_fraud": fraud_label, "fraud_probability": fraud_probability}
+    amount = float(features[0])
+    z_score = _z_score(amount, AMOUNT_REF_MEAN, AMOUNT_REF_STD)
+    amount_anomaly_score = _z_to_anomaly_score(z_score)
+
+    row = features.reshape(1, -1)
+    model_fraud_probability = float(trained_model.predict_proba(row)[0][1])
+
+    combined_score = (
+        LR_WEIGHT * model_fraud_probability + ANOMALY_WEIGHT * amount_anomaly_score
+    )
+    final_fraud = combined_score >= FINAL_THRESHOLD
+
+    explanations = _build_explanations(
+        z_score, model_fraud_probability, amount_anomaly_score
+    )
+
+    return {
+        "model_fraud_probability": model_fraud_probability,
+        "amount_z_score": z_score,
+        "amount_anomaly_score": amount_anomaly_score,
+        "combined_score": combined_score,
+        "is_fraud": int(final_fraud),
+        "explanations": explanations,
+    }

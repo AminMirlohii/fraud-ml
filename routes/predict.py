@@ -8,8 +8,12 @@ router = APIRouter(tags=["predict"])
 
 
 class FraudPredictResponse(BaseModel):
-    fraud_probability: float = Field(..., ge=0.0, le=1.0)
+    model_fraud_probability: float = Field(..., ge=0.0, le=1.0)
+    amount_z_score: float
+    amount_anomaly_score: float = Field(..., ge=0.0, le=1.0)
+    combined_score: float = Field(..., ge=0.0, le=1.0)
     fraud_label: bool
+    explanations: list[str]
 
 
 @router.post("/predict", response_model=FraudPredictResponse)
